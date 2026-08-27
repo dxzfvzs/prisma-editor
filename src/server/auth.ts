@@ -1,10 +1,6 @@
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import { type GetServerSidePropsContext } from "next";
-import {
-  getServerSession,
-  type DefaultSession,
-  type NextAuthOptions,
-} from "next-auth";
+import { type DefaultSession, getServerSession, type NextAuthOptions, } from "next-auth";
 import GitHubProvider from "next-auth/providers/github";
 import { env } from "~/env.mjs";
 import { prisma } from "~/server/db";
@@ -56,20 +52,28 @@ export const authOptions: NextAuthOptions = {
 
     // to add `id` to the user session
     async jwt({ token, user }) {
-      const dbUser = await prisma.user.findFirst({
-        where: {
-          email: token.email,
-        },
+      if (user) {
+        token.id = user.id;
+        token.name = user.name;
+        token.email = user.email;
+        token.picture = user.image;
+        return token;
+      }
+
+      if (!token.id) {
+        return token;
+      }
+
+      const dbUser = await prisma.user.findUnique({
+        where: { id: token.id },
       });
 
       if (!dbUser) {
-        if (user) {
-          token.id = user?.id;
-        }
         return token;
       }
 
       return {
+        ...token,
         id: dbUser.id,
         name: dbUser.name,
         email: dbUser.email,
